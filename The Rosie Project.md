@@ -2,7 +2,7 @@
 author: Simsion, Graeme
 cover: The_Rosie_Project.jpg
 ---
-![[The_Rosie_Project.jpg| 200]]
+![[00/Helper/Attachment/The_Rosie_Project.jpg]]
 **About Book:** THE ART OF LOVE IS NEVER A SCIENCE MEET DON TILLMAN, a brilliant yet socially challenged professor of genetics, who’s decided it’s time he found a wife. And so, in the orderly, evidence-based manner with which Don approaches all things, he designs the Wife Project to find his perfect partner: a sixteen-page, scientifically valid survey to filter out the drinkers, the smokers, the late arrivers. Rosie Jarman is all these things. She also is strangely beguiling, fiery, and intelligent. And while Don quickly disqualifies her as a candidate for the Wife Project, as a DNA expert Don is particularly suited to help Rosie on her own quest: identifying her biological father. When an unlikely relationship develops as they collaborate on the Father Project, Don is forced to confront the spontaneous whirlwind that is Rosie—and the realization that, despite your best scientific efforts, you don’t find love, it finds you. Arrestingly endearing and entirely unconventional, Graeme Simsion’s distinctive debut will resonate with anyone who has ever tenaciously gone after life or love in the face of great challenges. The Rosie Project is a rare find: a book that restores our optimism in the power of human connection.
 
 ---

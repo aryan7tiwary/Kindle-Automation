@@ -8,104 +8,128 @@ from bs4 import BeautifulSoup
 
 # --- Configuration ---
 # Set your Obsidian vault root directory
-OBSIDIAN_VAULT_DIR = r"C:\Users\Aryan\OneDrive\Documents\Obsidian Vault\Books" # Update this to your real vault path
+OBSIDIAN_VAULT_DIR = r"C:\Users\aryan\Documents\Obsidian_Vault\Books" # Update this to your real vault path
 
 # Set the attachment folder path relative to the vault root
-ATTACHMENT_DIR_REL = r"C:\Users\Aryan\OneDrive\Documents\Obsidian Vault\00_Helper\Attachments"
+ATTACHMENT_DIR_REL = r"C:\Users\aryan\Documents\Obsidian_Vault\00_Helper\Attachments"
 # ---------------------
+
+def search_open_library(book_title, author=None, limit=5):
+    """Searches Open Library for books, trying title+author first, then falling back to title-only."""
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    
+    # 1. Try search with title and author (if available)
+    if author:
+        # If "Lastname, Firstname" use Lastname; if "Firstname Lastname" use Lastname
+        author_parts = author.split(',') if ',' in author else author.split()
+        author_last = author_parts[0].strip() if ',' in author else (author_parts[-1].strip() if author_parts else author)
+        query = f"title={urllib.parse.quote(book_title)}&author={urllib.parse.quote(author_last)}"
+        search_url = f"https://openlibrary.org/search.json?{query}&limit={limit}"
+        try:
+            req = urllib.request.Request(search_url, headers=headers)
+            with urllib.request.urlopen(req) as resp:
+                data = json.loads(resp.read().decode())
+                if data.get('docs'):
+                    return data['docs']
+        except Exception:
+            pass
+
+    # 2. Fallback: Search by title only
+    query = f"title={urllib.parse.quote(book_title)}"
+    search_url = f"https://openlibrary.org/search.json?{query}&limit={limit}"
+    try:
+        req = urllib.request.Request(search_url, headers=headers)
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode())
+            if data.get('docs'):
+                return data['docs']
+    except Exception:
+        pass
+
+    # 3. Fallback: General keyword query
+    query = f"q={urllib.parse.quote(book_title)}"
+    search_url = f"https://openlibrary.org/search.json?{query}&limit={limit}"
+    try:
+        req = urllib.request.Request(search_url, headers=headers)
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode())
+            if data.get('docs'):
+                return data['docs']
+    except Exception:
+        pass
+
+    return []
 
 def get_book_cover(book_title, author, save_path):
     """Fetches the book cover from Open Library API and saves it."""
     print(f"Searching for cover image for '{book_title}'...")
     
-    # Construct the search query for Open Library
-    query = f"title={urllib.parse.quote(book_title)}"
-    if author:
-        # Get just the last name for better matching in Open Library
-        author_last = author.split(',')[0].strip() if ',' in author else author
-        query += f"&author={urllib.parse.quote(author_last)}"
-        
-    search_url = f"https://openlibrary.org/search.json?{query}&limit=5"
-    
     try:
-        req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
-        with urllib.request.urlopen(req) as response:
-            data = json.loads(response.read().decode())
-            
-            if 'docs' in data and len(data['docs']) > 0:
-                # Find the first item with an isbn or cover_i
-                for doc in data['docs']:
-                    if 'cover_i' in doc:
-                        cover_id = doc['cover_i']
-                        image_url = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
-                        break
-                    elif 'isbn' in doc and len(doc['isbn']) > 0:
-                        isbn = doc['isbn'][0]
-                        image_url = f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
-                        break
-                else:
-                    print(f"No cover image found in the Open Library results for '{book_title}'.")
-                    return False
-                    
-                # Download the image
-                req = urllib.request.Request(image_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req) as img_resp, open(save_path, 'wb') as out_file:
-                    out_file.write(img_resp.read())
-                print(f"Successfully downloaded cover image to {save_path}")
-                return True
-                        
-            else:
-                print(f"No book found in Open Library API for '{book_title}'.")
-                
+        docs = search_open_library(book_title, author, limit=5)
+        if not docs:
+            print(f"No book found in Open Library API for '{book_title}'.")
+            return False
+
+        # Find the first item with a cover_i or isbn
+        image_url = None
+        for doc in docs:
+            if 'cover_i' in doc and doc['cover_i']:
+                cover_id = doc['cover_i']
+                image_url = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+                break
+            elif 'isbn' in doc and len(doc['isbn']) > 0:
+                isbn = doc['isbn'][0]
+                image_url = f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
+                break
+
+        if not image_url:
+            print(f"No cover image found in the Open Library results for '{book_title}'.")
+            return False
+
+        # Download the image
+        req = urllib.request.Request(image_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req) as img_resp, open(save_path, 'wb') as out_file:
+            out_file.write(img_resp.read())
+        print(f"Successfully downloaded cover image to {save_path}")
+        return True
+
     except Exception as e:
         print(f"Error fetching book cover: {e}")
-        
-    return False
+        return False
 
 def get_book_description(book_title, author):
     """Fetches the book summary/description from Open Library API."""
     print(f"Searching for book description for '{book_title}'...")
     
-    query = f"title={urllib.parse.quote(book_title)}"
-    if author:
-        author_last = author.split(',')[0].strip() if ',' in author else author
-        query += f"&author={urllib.parse.quote(author_last)}"
-        
-    search_url = f"https://openlibrary.org/search.json?{query}&limit=3"
-    
     try:
-        req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            data = json.loads(response.read().decode())
-            
-            if 'docs' in data and len(data['docs']) > 0:
-                # Find the first item with a valid work key
-                for doc in data['docs']:
-                    if 'key' in doc:
-                        work_key = doc['key']
-                        
-                        # Go to the work page to get the description
-                        work_url = f"https://openlibrary.org{work_key}.json"
-                        work_req = urllib.request.Request(work_url, headers={'User-Agent': 'Mozilla/5.0'})
-                        with urllib.request.urlopen(work_req) as work_response:
-                            work_data = json.loads(work_response.read().decode())
-                            
-                            description = work_data.get('description')
-                            if description:
-                                # the description is sometimes a dict with 'value' key
-                                if isinstance(description, dict) and 'value' in description:
-                                    return description['value']
-                                elif isinstance(description, str):
-                                    return description
-                        # If the key had no description, try the next search result
-                
-                print(f"No description found in the Open Library results for '{book_title}'.")
-            else:
-                print(f"No book found in Open Library API for '{book_title}'.")
-                
+        docs = search_open_library(book_title, author, limit=5)
+        if not docs:
+            print(f"No book found in Open Library API for '{book_title}'.")
+            return None
+
+        # Find the first item with a valid work key and description
+        for doc in docs:
+            if 'key' in doc:
+                work_key = doc['key']
+                # Go to the work page to get the description
+                work_url = f"https://openlibrary.org{work_key}.json"
+                work_req = urllib.request.Request(work_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                try:
+                    with urllib.request.urlopen(work_req) as work_response:
+                        work_data = json.loads(work_response.read().decode())
+                        description = work_data.get('description')
+                        if description:
+                            if isinstance(description, dict) and 'value' in description:
+                                return description['value']
+                            elif isinstance(description, str):
+                                return description
+                except Exception:
+                    continue
+
+        print(f"No description found in the Open Library results for '{book_title}'.")
     except Exception as e:
         print(f"Error fetching book description: {e}")
-        
+
     return None
 
 def convert_kindle_html_to_obsidian(html_path, vault_dir, attachment_rel_dir):
